@@ -1,19 +1,41 @@
 module Main where
 
 import Control.Monad
+import Data.Map.Strict (Map)
+import qualified Data.Map.Strict as Map
 import System.Environment
 import Text.ParserCombinators.Parsec hiding (spaces)
 
-data AstNode = Var String | Int Integer | Bool Bool | Binary AstNode AstNode | String String deriving (Eq)
+data AstNode = Var String | Int Integer | Bool Bool | Assign String AstNode | Binary AstNode AstNode | String String deriving (Eq)
 
-eval :: AstNode -> AstNode
-eval value@(String _) = value
-eval value@(Int _) = value
-eval value@(Bool _) = value
-eval value@(Binary a b) =
-    let (Int x) = eval a
-     in let (Int y) = eval b
-         in Int (x + y)
+data Value = VInt Integer | VBool Bool | VStr String
+instance Show Value where show = showValue
+showValue :: Value -> String
+showValue (VInt x) = show x
+showValue (VBool False) = "false"
+showValue (VBool True) = "true"
+showValue (VStr s) = s
+
+type Env = Map.Map String Value
+
+eval :: AstNode -> Value
+eval (String s) = VStr s
+eval (Int x) = VInt x
+eval (Bool b) = VBool b
+-- eval (Assign s e) env =
+--     let val = eval e env
+--      in Map.insert s val env
+eval (Binary a b) =
+    let (VInt x) = eval a
+     in let (VInt y) = eval b
+         in VInt (x + y)
+
+parseAssign :: Parser AstNode
+parseAssign = do
+    name <- parseString
+    char '='
+    val <- parseExpr
+    return (Assign (toString name) val)
 
 parseString :: Parser AstNode
 parseString = do
@@ -62,8 +84,11 @@ toString (String literal) = literal
 toString (Int x) = show x
 toString (Bool True) = "True"
 toString (Bool False) = "False"
+toString (Binary x y) = "Binary: " ++ show x ++ " " ++ show y
 
 instance Show AstNode where show = toString
 
 main :: IO ()
-main = getArgs >>= print . eval . readExpr . head
+main = putStrLn "Hola"
+
+-- main = getArgs >>= print . eval . readExpr . head
